@@ -56,4 +56,42 @@ public class RecipesController : ControllerBase
         RecipeStore.Recipes.Remove(recipe);
         return NoContent();
     }
+
+    [HttpPost("upload")]
+    public async Task<ActionResult<string>> UploadImage(IFormFile file)
+    {
+        const long maxSizeBytes = 2 * 1024 * 1024;
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("Ingen fil vald.");
+        }
+
+        if (file.Length > maxSizeBytes)
+        {
+            return BadRequest("Filen är för stor. Max 2MB tillåtet.");
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        if (!allowedExtensions.Contains(extension))
+        {
+            return BadRequest("Endast bildfiler (jpg, png, webp) är tillåtna.");
+        }
+
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadsFolder);
+
+        var fileName = $"{Guid.NewGuid()}{extension}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var relativePath = $"/uploads/{fileName}";
+        return Ok(new { path = relativePath });
+    }
 }
